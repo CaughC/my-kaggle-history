@@ -3,47 +3,87 @@ import lightgbm as lgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import os
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
-def load_and_preprocess(file_path):
-    """Load and perform minimal preprocessing for LightGBM."""
-    df = pd.read_csv(file_path)
+def load_and_preprocess(df, cfg: DictConfig, is_train=True):
+    """General preprocessing based on Hydra configuration."""
+    X = df[cfg.dataset.features].copy()
     
-    # Simple feature selection
-    features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
-    X = df[features].copy()
-    y = df['Survived']
+    y = None
+    if is_train:
+        y = df[cfg.dataset.target]
     
-    # LightGBM can handle categorical features if they are set to 'category' dtype
-    X['Sex'] = X['Sex'].astype('category')
-    X['Embarked'] = X['Embarked'].astype('category')
-    
+    # Handle categorical features
+    for col in cfg.dataset.categorical_features:
+        if col in X.columns:
+            X[col] = X[col].astype('category')
+            
     return X, y
 
-def train_model(X, y):
-    """Split data and train a LightGBM classifier."""
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+def train_model(cfg: DictConfig, X, y):
+    """Train model using parameters from Hydra configuration."""
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, 
+        test_size=cfg.test_size, 
+        random_state=cfg.random_state
+    )
     
-    # Create the LightGBM dataset
-    # Note: LightGBM handles missing values (NaN) automatically
-    clf = lgb.LGBMClassifier(verbosity=-1)
+    # Initialize classifier with parameters from config
+    params = OmegaConf.to_container(cfg.model.params, resolve=True)
+    clf = lgb.LGBMClassifier(**params)
     
-    print("Training LightGBM model...")
+    print(f"Training LightGBM with params: {params}")
     clf.fit(X_train, y_train)
     
-    # Make predictions
-    y_pred = clf.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
+    y_pred = clf.predict(X_val)
+    accuracy = accuracy_score(y_val, y_pred)
     
-    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Validation Accuracy: {accuracy:.4f}")
     return clf
 
-if __name__ == "__main__":
-    data_path = os.path.join('n01_titanic', 'titanic', 'train.csv')
+def predict_and_save(cfg: DictConfig, model):
+    """Predict on test set and save submission."""
+    print(f"Loading test data from {cfg.dataset.test_path}...")
+    test_df = pd.read_csv(cfg.dataset.test_path)
+    
+    # Preprocess test data
+    X_test, _ = load_and_preprocess(test_df, cfg, is_train=False)
+    
+    # Make predictions
+    print("Generating predictions...")
+    test_preds = model.predict(X_test)
+    
+    # Create submission dataframe
+    submission = test_df[list(cfg.dataset.output_features)].copy()
+    submission[cfg.dataset.output_target] = test_preds
+    
+    # Ensure output directory exists
+    output_dir = os.path.dirname(cfg.dataset.output_path)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    submission.to_csv(cfg.dataset.output_path, index=False)
+    print(f"Submission saved to {cfg.dataset.output_path}")
+
+@hydra.main(version_base=None, config_path="config", config_name="lgbm_config")
+def main(cfg: DictConfig):
+    print("Configuration:")
+    print(OmegaConf.to_yaml(cfg))
     
     try:
-        X, y = load_and_preprocess(data_path)
-        model = train_model(X, y)
+        # Load training data
+        train_df = pd.read_csv(cfg.dataset.train_path)
+        X, y = load_and_preprocess(train_df, cfg, is_train=True)
+        
+        # Train
+        model = train_model(cfg, X, y)
+        
+        # Predict
+        predict_and_save(cfg, model)
         
     except Exception as e:
-        print(f"Error: {e}")
-        print("Note: Ensure 'scikit-learn' is installed for train_test_split and accuracy_score.")
+        print(f"Error occurred: {e}")
+
+if __name__ == "__main__":
+    main()

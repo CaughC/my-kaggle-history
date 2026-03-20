@@ -1,0 +1,34 @@
+# n01_titanic/config.yaml
+dataset:
+  train_path: "titanic/train.csv"
+  target: "Survived"
+  features: 
+    - "Pclass"
+    - "Sex"
+    - "Age"
+    - "SibSp"
+    - "Parch"
+    - "Fare"
+    - "Embarked"
+  categorical_features:
+    - "Sex"
+    - "Embarked"
+  
+  test_path: "titanic/test.csv"
+  output_path: "output/submission.csv"
+  output_target: "Survived"
+  output_features:
+    - "PassengerId"
+
+model:
+  params:
+    objective: "binary"
+    metric: "binary_logloss"
+    verbosity: -1
+    boosting_type: "gbdt"
+    num_leaves: 31
+    learning_rate: 0.05
+    n_estimators: 100
+
+test_size: 0.2
+random_state: 42
