@@ -1,6 +1,6 @@
-# n01_titanic/config.yaml
+# n01_titanic/config/lgbm_config.yaml
 dataset:
-  train_path: "titanic/train.csv"
+  train_path: "n01_titanic/titanic/train.csv"
   target: "Survived"
   features: 
     - "Pclass"
@@ -14,8 +14,8 @@ dataset:
     - "Sex"
     - "Embarked"
   
-  test_path: "titanic/test.csv"
-  output_path: "output/submission.csv"
+  test_path: "n01_titanic/titanic/test.csv"
+  output_path: "n01_titanic/output/submission.csv"
   output_target: "Survived"
   output_features:
     - "PassengerId"
