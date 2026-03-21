@@ -1,7 +1,8 @@
 import pandas as pd
+import numpy as np
 import lightgbm as lgb
 import optuna
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score
 import hydra
 from omegaconf import DictConfig, OmegaConf
@@ -23,7 +24,7 @@ def load_and_preprocess(df, cfg: DictConfig, is_train=True):
     return X, y
 
 def objective(trial, cfg: DictConfig, X, y):
-    """Optuna objective function for hyperparameter optimization."""
+    """Optuna objective function for hyperparameter optimization using CV."""
     params = {
         'objective': 'binary',
         'metric': 'binary_logloss',
@@ -35,21 +36,23 @@ def objective(trial, cfg: DictConfig, X, y):
         'bagging_fraction': trial.suggest_float('bagging_fraction', 0.4, 1.0),
         'bagging_freq': trial.suggest_int('bagging_freq', 1, 7),
         'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
-        'n_estimators': cfg.model.params.n_estimators
+        'n_estimators': trial.suggest_int('n_estimators', 50, 1000)
     }
     
-    # Resampling in every trial
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, 
-        test_size=cfg.test_size, 
-        random_state=trial.number
-    )
+    skf = StratifiedKFold(n_splits=cfg.n_folds, shuffle=True, random_state=cfg.random_state)
+    cv_scores = []
     
-    clf = lgb.LGBMClassifier(**params)
-    clf.fit(X_train, y_train)
-    
-    y_pred = clf.predict(X_val)
-    return accuracy_score(y_val, y_pred)
+    for train_idx, val_idx in skf.split(X, y):
+        X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
+        y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+        
+        clf = lgb.LGBMClassifier(**params)
+        clf.fit(X_train, y_train)
+        
+        y_pred = clf.predict(X_val)
+        cv_scores.append(accuracy_score(y_val, y_pred))
+        
+    return np.mean(cv_scores)
 
 def predict_and_save(cfg: DictConfig, model):
     """Predict on test set and save submission."""
@@ -72,17 +75,16 @@ def predict_and_save(cfg: DictConfig, model):
 
 @hydra.main(version_base=None, config_path="config", config_name="lgbm_config")
 def main(cfg: DictConfig):
-    print("Starting Optuna optimization...")
+    print("Starting Optuna optimization with Stratified K-Fold...")
     train_df = pd.read_csv(cfg.dataset.train_path)
     X, y = load_and_preprocess(train_df, cfg, is_train=True)
     
     study = optuna.create_study(direction='maximize')
     study.optimize(lambda trial: objective(trial, cfg, X, y), n_trials=50)
     
-    print(f"\nBest accuracy: {study.best_trial.value:.4f}")
+    print(f"\nBest cross-validation accuracy: {study.best_trial.value:.4f}")
     best_params = study.best_trial.params
     # Add constant params from config if needed
-    best_params['n_estimators'] = cfg.model.params.n_estimators
     best_params['objective'] = 'binary'
     best_params['verbosity'] = -1
 
