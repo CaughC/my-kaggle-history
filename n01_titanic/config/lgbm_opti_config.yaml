@@ -2,6 +2,7 @@
 dataset:
   train_path: "n01_titanic/titanic/train.csv"
   target: "Survived"
+  # Features used by the model AFTER engineering
   features: 
     - "Pclass"
     - "Sex"
@@ -10,10 +11,28 @@ dataset:
     - "Parch"
     - "Fare"
     - "Embarked"
+    - "Ticketab"
+    - "Ticketnum"
+    - "Cabinab"
+    - "Cabinnum"
+  # Raw columns needed for engineering
+  raw_features:
+    - "Pclass"
+    - "Sex"
+    - "Age"
+    - "SibSp"
+    - "Parch"
+    - "Fare"
+    - "Embarked"
+    - "Ticket"
+    - "Cabin"
+    - "Name"
   categorical_features:
     - "Sex"
     - "Embarked"
-
+    - "Ticketab"
+    - "Cabinab"
+  
   test_path: "n01_titanic/titanic/test.csv"
   output_path: "n01_titanic/output/submission.csv"
   output_target: "Survived"
@@ -31,4 +50,5 @@ model:
     n_estimators: 100
 
 test_size: 0.2
+n_folds: 5
 random_state: 42

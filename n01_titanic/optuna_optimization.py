@@ -8,15 +8,42 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import os
 
+def feature_engineering(df):
+    """Apply feature engineering to the Titanic dataset."""
+    df = df.copy()
+    
+    # Extracting ticket prefixes and numeric parts
+    df["Ticketab"] = df["Ticket"].str.extract('([A-Za-z]+)', expand=False)
+    df["Ticketnum"] = df["Ticket"].str.extract('(\d+)', expand=False)
+    df["Ticketnum"] = df["Ticketnum"].fillna(0).astype(int)
+    df["Ticketab"] = df["Ticketab"].fillna("NA")
+
+    # Suppose grouped passengers reserve the cabins next to each other.
+    df["Cabin"] = df["Cabin"].map(lambda x: x.split()[0] if pd.notnull(x) else x)  
+    # Keep only the first cabin if multiple are listed
+    df["Cabinab"] = df["Cabin"].str.extract('([A-Za-z]+)', expand=False)
+    df["Cabinnum"] = df["Cabin"].str.extract('(\d+)', expand=False)
+    df["Cabinab"] = df["Cabinab"].fillna("Z")  # Fill NaN with a placeholder
+    df["Cabinnum"] = df["Cabinnum"].fillna(0).astype(int)  # Fill NaN with 0 and convert to int
+    
+    return df
+
 def load_and_preprocess(df, cfg: DictConfig, is_train=True):
-    """General preprocessing based on Hydra configuration."""
-    X = df[cfg.dataset.features].copy()
+    """General preprocessing including feature engineering and categorical casting."""
+    # Start with raw features needed for engineering
+    X = df[list(cfg.dataset.raw_features)].copy()
     
     y = None
     if is_train:
         y = df[cfg.dataset.target]
     
-    # Handle categorical features
+    # Apply feature engineering
+    X = feature_engineering(X)
+    
+    # Filter for final features used by the model
+    X = X[list(cfg.dataset.features)].copy()
+    
+    # Handle categorical features explicitly for LightGBM
     for col in cfg.dataset.categorical_features:
         if col in X.columns:
             X[col] = X[col].astype('category')
@@ -58,6 +85,7 @@ def predict_and_save(cfg: DictConfig, model):
     """Predict on test set and save submission."""
     print(f"Loading test data from {cfg.dataset.test_path}...")
     test_df = pd.read_csv(cfg.dataset.test_path)
+    
     X_test, _ = load_and_preprocess(test_df, cfg, is_train=False)
     
     print("Generating predictions...")
@@ -73,24 +101,24 @@ def predict_and_save(cfg: DictConfig, model):
     submission.to_csv(cfg.dataset.output_path, index=False)
     print(f"Submission saved to {cfg.dataset.output_path}")
 
-@hydra.main(version_base=None, config_path="config", config_name="lgbm_config")
+@hydra.main(version_base=None, config_path="config", config_name="lgbm_opti_config")
 def main(cfg: DictConfig):
     print("Starting Optuna optimization with Stratified K-Fold...")
     train_df = pd.read_csv(cfg.dataset.train_path)
-    X, y = load_and_preprocess(train_df, cfg, is_train=True)
+    
+    X_df, y_df = load_and_preprocess(train_df, cfg, is_train=True)
     
     study = optuna.create_study(direction='maximize')
-    study.optimize(lambda trial: objective(trial, cfg, X, y), n_trials=50)
+    study.optimize(lambda trial: objective(trial, cfg, X_df, y_df), n_trials=50)
     
     print(f"\nBest cross-validation accuracy: {study.best_trial.value:.4f}")
     best_params = study.best_trial.params
-    # Add constant params from config if needed
     best_params['objective'] = 'binary'
     best_params['verbosity'] = -1
 
     print("\nTraining final model on full dataset with best parameters...")
     final_model = lgb.LGBMClassifier(**best_params)
-    final_model.fit(X, y)
+    final_model.fit(X_df, y_df)
     
     predict_and_save(cfg, final_model)
 
