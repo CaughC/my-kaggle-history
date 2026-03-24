@@ -1,8 +1,8 @@
-# n01_titanic/config/lgbm_config.yaml
+# n01_titanic/config/nn_config.yaml
 dataset:
   train_path: "n01_titanic/titanic/train.csv"
   target: "Survived"
-  # Features used by the model AFTER engineering
+  # Features used by the model
   features: 
     - "Pclass"
     - "Sex"
@@ -11,17 +11,15 @@ dataset:
     - "Parch"
     - "Fare"
     - "Embarked"
+    - "Title"
+    - "FamilySize"
+    - "IsAlone"
     - "Ticket"
     - "Cabin"
     - "Ticketab"
     - "Ticketnum"
     - "Cabinab"
     - "Cabinnum"
-    - "Title"
-    - "FamilySize"
-    - "Family_name"
-    - "GroupId"
-  # Raw columns needed for engineering
   raw_features:
     - "Pclass"
     - "Sex"
@@ -36,29 +34,27 @@ dataset:
   categorical_features:
     - "Sex"
     - "Embarked"
+    - "Title"
+    - "Pclass"
     - "Ticket"
     - "Cabin"
     - "Ticketab"
     - "Cabinab"
-    - "Title"
-    - "Family_name"
-    - "GroupId"
   
   test_path: "n01_titanic/titanic/test.csv"
-  output_path: "n01_titanic/output/submission.csv"
+  output_path: "n01_titanic/output/nn_submission.csv"
   output_target: "Survived"
   output_features:
     - "PassengerId"
 
 model:
-  params:
-    objective: "binary"
-    metric: "binary_logloss"
-    verbosity: -1
-    boosting_type: "gbdt"
-    num_leaves: 31
-    learning_rate: 0.05
-    n_estimators: 100
+  layers: [128, 64, 32] # Increased capacity for more features
+  dropout: 0.3
+  learning_rate: 1e-3
+  weight_decay: 0.01
+  batch_size: 32
+  epochs: 100 # More epochs for more complex feature space
 
-test_size: 0.2
+n_folds: 5
 random_state: 42
+device: "cpu"

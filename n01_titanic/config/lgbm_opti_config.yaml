@@ -11,10 +11,16 @@ dataset:
     - "Parch"
     - "Fare"
     - "Embarked"
+    - "Ticket"
+    - "Cabin"
     - "Ticketab"
     - "Ticketnum"
     - "Cabinab"
     - "Cabinnum"
+    - "Title"
+    - "FamilySize"
+    - "Family_name"
+    - "GroupId"
   # Raw columns needed for engineering
   raw_features:
     - "Pclass"
@@ -30,8 +36,13 @@ dataset:
   categorical_features:
     - "Sex"
     - "Embarked"
+    - "Ticket"
+    - "Cabin"
     - "Ticketab"
     - "Cabinab"
+    - "Title"
+    - "Family_name"
+    - "GroupId"
   
   test_path: "n01_titanic/titanic/test.csv"
   output_path: "n01_titanic/output/submission.csv"

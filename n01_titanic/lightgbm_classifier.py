@@ -1,3 +1,11 @@
+import os
+import sys
+
+# Ensure the script's directory is in the path for local imports
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
 import pandas as pd
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
@@ -5,21 +13,7 @@ from sklearn.metrics import accuracy_score
 import os
 import hydra
 from omegaconf import DictConfig, OmegaConf
-
-def load_and_preprocess(df, cfg: DictConfig, is_train=True):
-    """General preprocessing based on Hydra configuration."""
-    X = df[cfg.dataset.features].copy()
-    
-    y = None
-    if is_train:
-        y = df[cfg.dataset.target]
-    
-    # Handle categorical features
-    for col in cfg.dataset.categorical_features:
-        if col in X.columns:
-            X[col] = X[col].astype('category')
-            
-    return X, y
+import detailed_analysis as da
 
 def train_model(cfg: DictConfig, X, y):
     """Train model using parameters from Hydra configuration."""
@@ -48,7 +42,17 @@ def predict_and_save(cfg: DictConfig, model):
     test_df = pd.read_csv(cfg.dataset.test_path)
     
     # Preprocess test data
-    X_test, _ = load_and_preprocess(test_df, cfg, is_train=False)
+    X_test, _ = da.load_and_preprocess(
+        test_df, 
+        cfg.dataset.raw_features, 
+        cfg.dataset.features, 
+        fill_na=False
+    )
+    
+    # Handle categorical features
+    for col in cfg.dataset.categorical_features:
+        if col in X_test.columns:
+            X_test[col] = X_test[col].astype('category')
     
     # Make predictions
     print("Generating predictions...")
@@ -74,7 +78,18 @@ def main(cfg: DictConfig):
     try:
         # Load training data
         train_df = pd.read_csv(cfg.dataset.train_path)
-        X, y = load_and_preprocess(train_df, cfg, is_train=True)
+        X, y = da.load_and_preprocess(
+            train_df, 
+            cfg.dataset.raw_features, 
+            cfg.dataset.features, 
+            cfg.dataset.target, 
+            fill_na=False
+        )
+        
+        # Handle categorical features
+        for col in cfg.dataset.categorical_features:
+            if col in X.columns:
+                X[col] = X[col].astype('category')
         
         # Train
         model = train_model(cfg, X, y)
