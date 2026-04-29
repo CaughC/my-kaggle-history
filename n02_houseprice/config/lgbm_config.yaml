@@ -1,0 +1,78 @@
+# n02_houseprice/config/lgbm_config.yaml
+dataset:
+  train_path: "n02_houseprice/house-prices-advanced-regression-techniques/train.csv"
+  target: "SalePrice"
+  # Features used by the model AFTER engineering
+  # If null, all engineered features will be used
+  features: null
+  
+  # Raw columns needed for engineering
+  # If null, all columns will be used
+  raw_features: null
+
+  categorical_features:
+    - "MSSubClass"
+    - "MSZoning"
+    - "Street"
+    - "Alley"
+    - "LotShape"
+    - "LandContour"
+    - "Utilities"
+    - "LotConfig"
+    - "LandSlope"
+    - "Neighborhood"
+    - "Condition1"
+    - "Condition2"
+    - "BldgType"
+    - "HouseStyle"
+    - "OverallQual"
+    - "OverallCond"
+    - "RoofStyle"
+    - "RoofMatl"
+    - "Exterior1st"
+    - "Exterior2nd"
+    - "MasVnrType"
+    - "ExterQual"
+    - "ExterCond"
+    - "Foundation"
+    - "BsmtQual"
+    - "BsmtCond"
+    - "BsmtExposure"
+    - "BsmtFinType1"
+    - "BsmtFinType2"
+    - "Heating"
+    - "HeatingQC"
+    - "CentralAir"
+    - "Electrical"
+    - "KitchenQual"
+    - "Functional"
+    - "FireplaceQu"
+    - "GarageType"
+    - "GarageFinish"
+    - "GarageQual"
+    - "GarageCond"
+    - "PavedDrive"
+    - "PoolQC"
+    - "Fence"
+    - "MiscFeature"
+    - "SaleType"
+    - "SaleCondition"
+  
+  test_path: "n02_houseprice/house-prices-advanced-regression-techniques/test.csv"
+  output_path: "n02_houseprice/output/submission.csv"
+  output_target: "SalePrice"
+  output_features:
+    - "Id"
+
+model:
+  params:
+    objective: "regression"
+    metric: "rmse"
+    verbosity: -1
+    boosting_type: "gbdt"
+    num_leaves: 31
+    learning_rate: 0.05
+    n_estimators: 1000
+
+test_size: 0.2
+random_state: 42

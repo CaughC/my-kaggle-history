@@ -1,0 +1,63 @@
+# n02_houseprice/config/lgbm_opti_config.yaml
+dataset:
+  train_path: "n02_houseprice/house-prices-advanced-regression-techniques/train.csv"
+  target: "SalePrice"
+  features: null
+  raw_features: null
+  categorical_features:
+    - "MSSubClass"
+    - "MSZoning"
+    - "Street"
+    - "Alley"
+    - "LotShape"
+    - "LandContour"
+    - "Utilities"
+    - "LotConfig"
+    - "LandSlope"
+    - "Neighborhood"
+    - "Condition1"
+    - "Condition2"
+    - "BldgType"
+    - "HouseStyle"
+    - "OverallQual"
+    - "OverallCond"
+    - "RoofStyle"
+    - "RoofMatl"
+    - "Exterior1st"
+    - "Exterior2nd"
+    - "MasVnrType"
+    - "ExterQual"
+    - "ExterCond"
+    - "Foundation"
+    - "BsmtQual"
+    - "BsmtCond"
+    - "BsmtExposure"
+    - "BsmtFinType1"
+    - "BsmtFinType2"
+    - "Heating"
+    - "HeatingQC"
+    - "CentralAir"
+    - "Electrical"
+    - "KitchenQual"
+    - "Functional"
+    - "FireplaceQu"
+    - "GarageType"
+    - "GarageFinish"
+    - "GarageQual"
+    - "GarageCond"
+    - "PavedDrive"
+    - "PoolQC"
+    - "Fence"
+    - "MiscFeature"
+    - "SaleType"
+    - "SaleCondition"
+  
+  test_path: "n02_houseprice/house-prices-advanced-regression-techniques/test.csv"
+  output_path: "n02_houseprice/output/opti_submission.csv"
+  output_target: "SalePrice"
+  output_features:
+    - "Id"
+
+test_size: 0.2
+n_folds: 5
+random_state: 42

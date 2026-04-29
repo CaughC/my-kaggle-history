@@ -6,6 +6,7 @@ wheels/
 *.egg-info
 .hydra/
 *.log
+outputs/
 
 # Virtual environments
 .venv
