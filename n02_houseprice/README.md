@@ -25,6 +25,11 @@ uv run n02_houseprice/optuna_optimization.py
 uv run n02_houseprice/nn_regressor.py
 ```
 
+### classical models
+```bash
+uv run n02_houseprice/classical_models.py
+```
+
 
 
 

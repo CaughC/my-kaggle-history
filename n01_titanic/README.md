@@ -21,3 +21,8 @@ uv run n01_titanic/basic_analysis.py
 uv run n01_titanic/lightgbm_classifier.py 
 ```
 config/lgbm_config.yaml must be filed.
+
+### classical models
+```bash
+uv run n01_titanic/classical_models.py
+```

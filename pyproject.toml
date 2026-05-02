@@ -18,12 +18,14 @@ dependencies = [
     "transformers>=5.2.0",
     "accelerate>=1.12.0",
     "bitsandbytes>=0.49.2",
+    "kaggle-utils",
 ]
 
 [tool.uv.sources]
 torch = [{ index = "torch-cu126" }]
 torchvision = [{ index = "torch-cu126" }]
 torchaudio = [{ index = "torch-cu126" }]
+kaggle-utils = { workspace = true, editable = true }
 
 [[tool.uv.index]]
 name = "torch-cu126"
@@ -34,3 +36,8 @@ explicit = true
 # 🔥 ここが重要
 [tool.uv.extra-build-dependencies]
 flash-attn = ["torch==2.8.0"]
+
+[tool.uv.workspace]
+members = [
+    "kaggle_utils",
+]

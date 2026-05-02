@@ -19,52 +19,8 @@ from transformers import get_linear_schedule_with_warmup
 import torch.optim as optim
 import hydra
 from omegaconf import DictConfig, OmegaConf
-import os
 import detailed_analysis as da
-
-class TitanicMLP(nn.Module):
-    def __init__(self, input_dim, layer_sizes, dropout=0.2):
-        super(TitanicMLP, self).__init__()
-        layers = []
-        prev_dim = input_dim
-        for size in layer_sizes:
-            layers.append(nn.Linear(prev_dim, size))
-            layers.append(nn.ReLU())
-            layers.append(nn.Dropout(dropout))
-            prev_dim = size
-        layers.append(nn.Linear(prev_dim, 1))
-        layers.append(nn.Sigmoid())
-        self.model = nn.Sequential(*layers)
-        
-    def forward(self, x):
-        return self.model(x)
-
-def train_epoch(model, loader, criterion, optimizer, scheduler, device):
-    model.train()
-    total_loss = 0
-    for x, y in loader:
-        x, y = x.to(device), y.to(device)
-        optimizer.zero_grad()
-        out = model(x)
-        loss = criterion(out, y.unsqueeze(1))
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
-        total_loss += loss.item()
-    return total_loss / len(loader)
-
-def evaluate(model, loader, device):
-    model.eval()
-    preds = []
-    targets = []
-    with torch.no_grad():
-        for x, y in loader:
-            x = x.to(device)
-            out = model(x)
-            preds.extend(out.cpu().numpy())
-            targets.extend(y.numpy())
-    preds = (np.array(preds) > 0.5).astype(int)
-    return accuracy_score(targets, preds)
+from kaggle_utils import TabularMLP, train_nn_epoch, evaluate_nn
 
 @hydra.main(version_base=None, config_path="config", config_name="nn_config")
 def main(cfg: DictConfig):
@@ -125,7 +81,7 @@ def main(cfg: DictConfig):
         val_loader = DataLoader(val_ds, batch_size=cfg.model.batch_size)
         
         # Initialize model
-        model = TitanicMLP(input_dim, cfg.model.layers, cfg.model.dropout).to(device)
+        model = TabularMLP(input_dim, cfg.model.layers, cfg.model.dropout, activation="sigmoid").to(device)
         optimizer = optim.AdamW(model.parameters(), lr=cfg.model.learning_rate, weight_decay=cfg.model.weight_decay)
         criterion = nn.BCELoss()
         
@@ -133,9 +89,9 @@ def main(cfg: DictConfig):
         scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
         
         for epoch in range(cfg.model.epochs):
-            train_loss = train_epoch(model, train_loader, criterion, optimizer, scheduler, device)
+            train_loss = train_nn_epoch(model, train_loader, criterion, optimizer, scheduler, device)
         
-        acc = evaluate(model, val_loader, device)
+        acc = evaluate_nn(model, val_loader, device, task_type="classification")
         print(f"Fold {fold}: Accuracy = {acc:.4f}")
         cv_scores.append(acc)
         
@@ -145,18 +101,3 @@ def main(cfg: DictConfig):
             final_test_preds += (model(X_test_t).cpu().numpy().flatten() / cfg.n_folds)
             
     print(f"\nMean CV Accuracy: {np.mean(cv_scores):.4f}")
-    
-    # Generate final submission
-    test_preds = (final_test_preds > 0.5).astype(int)
-    submission = test_df[list(cfg.dataset.output_features)].copy()
-    submission[cfg.dataset.output_target] = test_preds
-    
-    output_dir = os.path.dirname(cfg.dataset.output_path)
-    if output_dir and not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-        
-    submission.to_csv(cfg.dataset.output_path, index=False)
-    print(f"Submission saved to {cfg.dataset.output_path}")
-
-if __name__ == "__main__":
-    main()
